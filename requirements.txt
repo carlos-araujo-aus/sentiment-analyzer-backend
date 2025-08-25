@@ -1,0 +1,9 @@
+        Flask
+        Flask-Cors
+        gunicorn
+        Flask-SQLAlchemy
+        psycopg2-binary
+        ibm-watson
+        python-dotenv
+        flask-limiter
+        flask-swagger-ui
