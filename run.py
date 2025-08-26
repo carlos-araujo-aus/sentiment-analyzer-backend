@@ -1,5 +1,5 @@
-# run.py
 from api import create_app
+from api.models import Analysis
 
 # When running locally, we use the DevelopmentConfig
 # This enables debug mode and other development-friendly features

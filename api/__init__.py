@@ -6,47 +6,58 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_swagger_ui import get_swaggerui_blueprint
 from dotenv import load_dotenv
+# --- New Imports ---
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
-# Load environment variables from .env file
 load_dotenv()
 
-# Initialize extensions
-# We create the instances here but bind them to the app inside the factory
-limiter = Limiter(key_func=get_remote_address, default_limits=["10 per day", "10 per hour"])
-# (Database instances will be added in a later phase)
+# --- Initialize Extensions ---
+# Create instances of our extensions globally.
+# They are not yet attached to a specific app.
+db = SQLAlchemy()
+migrate = Migrate()
+limiter = Limiter(key_func=get_remote_address, default_limits=["20 per day", "5 per hour"])
 
 def create_app(config_class='api.config.ProductionConfig'):
     """
-    Application Factory: Creates and configures the Flask application.
+    Application factory pattern to create and configure the Flask app.
     """
     app = Flask(__name__)
-    # Load configuration from the config.py file
     app.config.from_object(config_class)
 
-    # --- CONFIGURE EXTENSIONS ---
-    # CORS: Allow requests from our frontend
-    frontend_url = app.config.get('FRONTEND_URL')
-    if frontend_url:
-        # Production: strict CORS
-        CORS(app, origins=[frontend_url])
-    else:
-        # Development: permissive CORS
-        CORS(app)
+    # --- Configure and Bind Extensions to the App ---
 
-    # Rate Limiter
+    # Database Configuration
+    # Read the database URI from environment variables
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    # Disable a feature of SQLAlchemy that we don't need and that adds overhead
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+    # Bind the database and migration engine to the Flask app
+    db.init_app(app)
+    migrate.init_app(app, db)
+    
+    # Bind the rate limiter to the app
     limiter.init_app(app)
 
-    # Swagger UI for API documentation
-    SWAGGER_URL = '/api/docs'  # URL for the interactive API docs
-    API_URL = '/static/swagger.json' # URL to the API specification file (we will create this later)
+    # CORS Configuration
+    frontend_url = app.config.get('FRONTEND_URL')
+    if frontend_url:
+        CORS(app, origins=[frontend_url])
+    else:
+        CORS(app)  # Permissive for development
+
+    # Swagger UI Configuration
+    SWAGGER_URL = '/api/docs'
+    API_URL = '/static/swagger.json'
     swaggerui_blueprint = get_swaggerui_blueprint(
         SWAGGER_URL, API_URL, config={'app_name': "Sentiment Analyzer API"}
     )
     app.register_blueprint(swaggerui_blueprint)
 
-    # --- REGISTER BLUEPRINTS ---
+    # --- Register Blueprints ---
     from .routes import main_bp
-    # All routes in this blueprint will be prefixed with /api
     app.register_blueprint(main_bp, url_prefix='/api')
 
     return app
