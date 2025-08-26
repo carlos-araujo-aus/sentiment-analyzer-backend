@@ -29,8 +29,8 @@ def analyze_route():
 
     max_chars = current_app.config.get('MAX_TEXT_CHARS', 1000)
     if len(text_to_analyze) > max_chars:
-        return jsonify({"error": f"The text exceeds the character limit of {max_chars}."}), 413
-
+        error_message = f"The text exceeds the character limit of {max_chars}. Submitted: {len(text_to_analyze)} characters."
+        return jsonify({"error": error_message}), 413
     # Call the service layer to perform the analysis
     result = analyze_text(text_to_analyze)
     status_code = result.get("status", 500)
