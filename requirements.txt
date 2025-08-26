@@ -3,8 +3,8 @@ Flask-Cors
 gunicorn
 Flask-SQLAlchemy
 Flask-Migrate
+Flask-Limiter
 psycopg2-binary
 ibm-watson
 python-dotenv
-flask-limiter
 flask-swagger-ui

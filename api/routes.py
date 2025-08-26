@@ -1,4 +1,3 @@
-# api/routes.py
 from flask import Blueprint, jsonify, request, current_app
 from .services.watson_service import analyze_text
 from . import limiter, db
@@ -12,11 +11,13 @@ def health_check():
     return jsonify({"status": "healthy"}), 200
 
 @main_bp.route('/analyze', methods=['POST'])
+# Apply a specific, stricter rate limit to this route only.
 @limiter.limit("10 per minute")
 def analyze_route():
     """
     Analyzes a block of text and saves the successful result to the database.
     """
+    
     if not request.is_json:
         return jsonify({"error": "Request must be of type application/json"}), 415
 

@@ -1,12 +1,11 @@
 # api/__init__.py
 import os
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_swagger_ui import get_swaggerui_blueprint
 from dotenv import load_dotenv
-# --- New Imports ---
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -17,7 +16,12 @@ load_dotenv()
 # They are not yet attached to a specific app.
 db = SQLAlchemy()
 migrate = Migrate()
-limiter = Limiter(key_func=get_remote_address, default_limits=["20 per day", "5 per hour"])
+# Initialize the rate limiter. It will be configured from the app config.
+limiter = Limiter(
+    key_func=lambda: get_remote_address() or request.remote_addr,
+    default_limits=["50 per day", "10 per hour"]
+    # We removed storage_uri from here
+)
 
 def create_app(config_class='api.config.ProductionConfig'):
     """
@@ -30,7 +34,7 @@ def create_app(config_class='api.config.ProductionConfig'):
 
     # Database Configuration
     # Read the database URI from environment variables
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL') + "?sslmode=require"
     # Disable a feature of SQLAlchemy that we don't need and that adds overhead
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -38,9 +42,6 @@ def create_app(config_class='api.config.ProductionConfig'):
     db.init_app(app)
     migrate.init_app(app, db)
     
-    # Bind the rate limiter to the app
-    limiter.init_app(app)
-
     # CORS Configuration
     frontend_url = app.config.get('FRONTEND_URL')
     if frontend_url:
@@ -59,5 +60,8 @@ def create_app(config_class='api.config.ProductionConfig'):
     # --- Register Blueprints ---
     from .routes import main_bp
     app.register_blueprint(main_bp, url_prefix='/api')
+
+    # Bind the rate limiter AFTER the blueprints are registered.
+    limiter.init_app(app)
 
     return app
