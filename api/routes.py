@@ -1,6 +1,8 @@
 import requests
 import uuid
+from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request, current_app
+from sqlalchemy import func
 from .services.watson_service import analyze_text
 from . import limiter, db
 from .models import Analysis
@@ -45,15 +47,34 @@ def health_check():
     }), 200
 
 @main_bp.route('/analyze', methods=['POST'])
+@limiter.limit("15 per minute") # Capa 1: Protección de ráfagas
 def analyze_route():
     """
-    Analyzes a block of text and saves the successful result to the database.
-    First, it verifies the user with a reCAPTCHA token.
+    Analyzes a block of text, protected by two layers of rate limiting.
     """
-    # --- 1. ADD SESSION ID VALIDATION ---
     session_id = request.headers.get('X-Session-ID')
     if not session_id:
         return jsonify({"error": "Session ID is missing from the request."}), 400
+
+    # --- Capa 2: Límite de Uso Diario (Lógica de Base de Datos) ---
+    try:
+        daily_limit = current_app.config.get('DAILY_ANALYSIS_LIMIT_PER_SESSION', 10)
+        
+        # Define el inicio del día actual en UTC
+        start_of_day_utc = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Contar los análisis para esta sesión desde el inicio del día
+        analyses_today = db.session.query(func.count(Analysis.id)).filter(
+            Analysis.session_id == session_id,
+            Analysis.created_at >= start_of_day_utc
+        ).scalar()
+
+        if analyses_today >= daily_limit:
+            return jsonify({"error": f"You have reached the daily limit of {daily_limit} analyses."}), 429
+
+    except Exception as e:
+        current_app.logger.error(f"Database error during daily limit check: {e}")
+        return jsonify({"error": "Could not verify usage limit due to a server error."}), 500
 
     if not request.is_json:
         return jsonify({"error": "Request must be of type application/json"}), 415

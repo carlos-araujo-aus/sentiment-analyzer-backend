@@ -15,6 +15,8 @@ class Config:
     RATELIMIT_HEADERS_ENABLED = True
     # Add config variable for the reCAPTCHA secret key
     RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY')
+    # Daily limit for analyses per user session
+    DAILY_ANALYSIS_LIMIT_PER_SESSION = 10
 
 class DevelopmentConfig(Config):
     DEBUG = True

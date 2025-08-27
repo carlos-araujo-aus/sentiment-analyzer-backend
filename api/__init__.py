@@ -11,16 +11,21 @@ from flask_migrate import Migrate
 
 load_dotenv()
 
+def get_identifier():
+    """
+    Determina el identificador para el límite de peticiones.
+    Excluye las peticiones OPTIONS del límite de peticiones.
+    """
+    if request.method == 'OPTIONS':
+        return None
+    # Para la protección de ráfagas, la IP es un buen identificador.
+    return get_remote_address()
+
 # --- Initialize Extensions ---
-# Create instances of our extensions globally.
-# They are not yet attached to a specific app.
 db = SQLAlchemy()
 migrate = Migrate()
-# Asegúrate de que el constructor de Limiter NO tenga 'exempt_methods'
 limiter = Limiter(
-    key_func=get_remote_address,
-    # This is the single source of truth for our rate limit.
-    default_limits=["10 per day"]
+    key_func=get_identifier
 )
 
 def create_app(config_class_string='api.config.ProductionConfig'):
@@ -35,15 +40,9 @@ def create_app(config_class_string='api.config.ProductionConfig'):
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url + "?sslmode=require"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # --- Rate Limiter Config ---
-    # SET THE CONFIGURATION BEFORE INITIALIZING THE EXTENSION.
-    # This ensures the limiter reads this config when it's initialized.
-    app.config["RATELIMIT_EXEMPT_METHODS"] = ["OPTIONS"]
-
     # --- Extension Initialization ---
     db.init_app(app)
     migrate.init_app(app, db)
-    # Now, when the limiter is initialized, it will see the config above.
     limiter.init_app(app)
     
     # --- CORS ---
