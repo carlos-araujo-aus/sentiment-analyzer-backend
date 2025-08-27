@@ -21,4 +21,5 @@ RUN addgroup --system appgroup && adduser --system --no-create-home --ingroup ap
 RUN chown -R appuser:appgroup /app
 USER appuser
 
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "run:app"]
+# Run gunicorn using shell form to allow environment variable expansion
+CMD gunicorn --bind 0.0.0.0:$PORT run:app
