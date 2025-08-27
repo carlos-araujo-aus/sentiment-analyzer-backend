@@ -1,4 +1,5 @@
 import requests
+import uuid
 from flask import Blueprint, jsonify, request, current_app
 from .services.watson_service import analyze_text
 from . import limiter, db
@@ -34,15 +35,26 @@ def verify_recaptcha(token):
 @main_bp.route('/health')
 def health_check():
     """Health check endpoint for monitoring."""
-    return jsonify({"status": "healthy"}), 200
+    # 2. Get the same key that the rate limiter is using
+    user_identifier = get_remote_address()
+    
+    # 3. Return this identifier in the response
+    return jsonify({
+        "status": "healthy",
+        "limiter_key": user_identifier
+    }), 200
 
 @main_bp.route('/analyze', methods=['POST'])
-@limiter.limit("10 per minute")
 def analyze_route():
     """
     Analyzes a block of text and saves the successful result to the database.
     First, it verifies the user with a reCAPTCHA token.
     """
+    # --- 1. ADD SESSION ID VALIDATION ---
+    session_id = request.headers.get('X-Session-ID')
+    if not session_id:
+        return jsonify({"error": "Session ID is missing from the request."}), 400
+
     if not request.is_json:
         return jsonify({"error": "Request must be of type application/json"}), 415
 
@@ -81,6 +93,7 @@ def analyze_route():
         emotions_data = analysis_data.get("emotions", {})
         
         new_analysis = Analysis(
+            session_id=session_id, # <-- 2. INCLUDE SESSION ID ON SAVE
             text_content=text_to_analyze,
             sentiment_label=sentiment_data.get('label', 'unknown'),
             sentiment_score=sentiment_data.get('score', 0.0),
@@ -108,11 +121,17 @@ def analyze_route():
 @main_bp.route('/history', methods=['GET'])
 def history_route():
     """
-    Retrieves the 10 most recent analysis records from the database.
+    Retrieves the 10 most recent analysis records for the current user's session.
     """
+    # --- 3. ADD SESSION ID VALIDATION ---
+    session_id = request.headers.get('X-Session-ID')
+    if not session_id:
+        return jsonify({"error": "Session ID is missing from the request."}), 400
+
     try:
-        # Query the database for the last 10 analyses, ordered by creation date descending.
-        recent_analyses = Analysis.query.order_by(Analysis.created_at.desc()).limit(10).all()
+        # --- 4. MODIFY THE DATABASE QUERY ---
+        # Filter analyses to only return those for the current session
+        recent_analyses = Analysis.query.filter_by(session_id=session_id).order_by(Analysis.created_at.desc()).limit(10).all()
         
         # Use the `to_dict()` method from our model to serialize each object.
         history_list = [analysis.to_dict() for analysis in recent_analyses]
@@ -122,3 +141,10 @@ def history_route():
         # In a real production environment, this error should be logged.
         print(f"Database Error: Could not retrieve history. {e}")
         return jsonify({"error": "Could not retrieve analysis history."}), 500
+
+# --- 2. ADD THE NEW ENDPOINT HERE ---
+@main_bp.route('/session/new', methods=['GET'])
+def new_session():
+    """Generates and returns a new unique session ID (UUID)."""
+    session_id = str(uuid.uuid4())
+    return jsonify({"session_id": session_id}), 200

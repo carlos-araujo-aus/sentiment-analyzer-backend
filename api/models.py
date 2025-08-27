@@ -10,6 +10,8 @@ class Analysis(db.Model):
     __tablename__ = 'analyses'
 
     id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(36), nullable=False, index=True)
+
     text_content = db.Column(db.Text, nullable=False)
     
     sentiment_label = db.Column(db.String(10), nullable=False)

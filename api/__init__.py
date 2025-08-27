@@ -16,33 +16,37 @@ load_dotenv()
 # They are not yet attached to a specific app.
 db = SQLAlchemy()
 migrate = Migrate()
-# Initialize the rate limiter. It will be configured from the app config.
+# Asegúrate de que el constructor de Limiter NO tenga 'exempt_methods'
 limiter = Limiter(
-    key_func=lambda: get_remote_address() or request.remote_addr,
-    default_limits=["50 per day", "10 per hour"]
-    # We removed storage_uri from here
+    key_func=get_remote_address,
+    # This is the single source of truth for our rate limit.
+    default_limits=["10 per day"]
 )
 
-def create_app(config_class='api.config.ProductionConfig'):
+def create_app(config_class_string='api.config.ProductionConfig'):
     """
     Application factory pattern to create and configure the Flask app.
     """
     app = Flask(__name__)
-    app.config.from_object(config_class)
+    app.config.from_object(config_class_string)
 
-    # --- Configure and Bind Extensions to the App ---
-
-    # Database Configuration
-    # Read the database URI from environment variables
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL') + "?sslmode=require"
-    # Disable a feature of SQLAlchemy that we don't need and that adds overhead
+    # --- Database Config ---
+    db_url = os.getenv('DATABASE_URL')
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url + "?sslmode=require"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # Bind the database and migration engine to the Flask app
+    # --- Rate Limiter Config ---
+    # SET THE CONFIGURATION BEFORE INITIALIZING THE EXTENSION.
+    # This ensures the limiter reads this config when it's initialized.
+    app.config["RATELIMIT_EXEMPT_METHODS"] = ["OPTIONS"]
+
+    # --- Extension Initialization ---
     db.init_app(app)
     migrate.init_app(app, db)
+    # Now, when the limiter is initialized, it will see the config above.
+    limiter.init_app(app)
     
-    # CORS Configuration
+    # --- CORS ---
     frontend_url = app.config.get('FRONTEND_URL')
     if frontend_url:
         CORS(app, origins=[frontend_url])
@@ -60,8 +64,5 @@ def create_app(config_class='api.config.ProductionConfig'):
     # --- Register Blueprints ---
     from .routes import main_bp
     app.register_blueprint(main_bp, url_prefix='/api')
-
-    # Bind the rate limiter AFTER the blueprints are registered.
-    limiter.init_app(app)
 
     return app
