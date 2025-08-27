@@ -1,5 +1,11 @@
 FROM python:3.9-slim
 
+# Instala las dependencias del sistema operativo necesarias para compilar psycopg2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
