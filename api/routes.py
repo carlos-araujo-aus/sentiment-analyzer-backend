@@ -1,3 +1,4 @@
+import requests
 from flask import Blueprint, jsonify, request, current_app
 from .services.watson_service import analyze_text
 from . import limiter, db
@@ -5,23 +6,56 @@ from .models import Analysis
 
 main_bp = Blueprint('main', __name__)
 
+# 2. Add the reCAPTCHA verification helper function
+def verify_recaptcha(token):
+    """Verifies a reCAPTCHA token with the Google API."""
+    secret_key = current_app.config.get('RECAPTCHA_SECRET_KEY')
+
+    # Fail securely if the secret key is not configured
+    if not secret_key:
+        current_app.logger.error('RECAPTCHA_SECRET_KEY is not configured.')
+        return False
+
+    payload = {'secret': secret_key, 'response': token}
+    
+    try:
+        response = requests.post(
+            'https://www.google.com/recaptcha/api/siteverify', 
+            data=payload,
+            timeout=5 
+        )
+        response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+        result = response.json()
+        return result.get('success', False)
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f'reCAPTCHA verification request failed: {e}')
+        return False
+
 @main_bp.route('/health')
 def health_check():
     """Health check endpoint for monitoring."""
     return jsonify({"status": "healthy"}), 200
 
 @main_bp.route('/analyze', methods=['POST'])
-# Apply a specific, stricter rate limit to this route only.
 @limiter.limit("10 per minute")
 def analyze_route():
     """
     Analyzes a block of text and saves the successful result to the database.
+    First, it verifies the user with a reCAPTCHA token.
     """
-    
     if not request.is_json:
         return jsonify({"error": "Request must be of type application/json"}), 415
 
     data = request.get_json()
+
+    # --- NEW: reCAPTCHA Verification Logic ---
+    captcha_token = data.get('captchaToken')
+    if not captcha_token or not verify_recaptcha(captcha_token):
+        return jsonify({
+            "error": "CAPTCHA verification failed. Please try again."
+        }), 403 # 403 Forbidden is the appropriate status code
+
+    # --- Existing logic continues only if CAPTCHA is valid ---
     text_to_analyze = data.get('text')
 
     if not text_to_analyze or not isinstance(text_to_analyze, str) or not text_to_analyze.strip():
@@ -31,6 +65,7 @@ def analyze_route():
     if len(text_to_analyze) > max_chars:
         error_message = f"The text exceeds the character limit of {max_chars}. Submitted: {len(text_to_analyze)} characters."
         return jsonify({"error": error_message}), 413
+
     # Call the service layer to perform the analysis
     result = analyze_text(text_to_analyze)
     status_code = result.get("status", 500)

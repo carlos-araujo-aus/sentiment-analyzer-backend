@@ -8,3 +8,4 @@ psycopg2-binary
 ibm-watson
 python-dotenv
 flask-swagger-ui
+requests
