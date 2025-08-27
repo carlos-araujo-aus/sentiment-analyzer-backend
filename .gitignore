@@ -27,8 +27,4 @@ db.sqlite3
 # Logs
 logs/
 
-# Instancias de la aplicación
-instance/
 
-# Directorio de migraciones de la base de datos
-migrations/
