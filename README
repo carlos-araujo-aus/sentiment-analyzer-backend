@@ -2,7 +2,7 @@
 
 This repository contains the backend API for the AI Sentiment Analyzer project. It's a robust, production-ready, and secure RESTful service built with Python and Flask. It serves as the intelligent core of the application, handling text analysis, data persistence, and security.
 
-**➡️ Live Frontend Demo (powered by this API): [YOUR_LIVE_DEMO_URL_HERE] ⬅️**
+**➡️ Live Frontend Demo (powered by this API): https://sentiment-analyzer-app-qry4q.ondigitalocean.app/ ⬅️**
 
 ## ✨ Core Features
 
@@ -24,6 +24,18 @@ This repository contains the backend API for the AI Sentiment Analyzer project. 
     -   **Automated Tests**: A comprehensive suite of integration and unit tests built with `pytest` and `pytest-mock`.
     -   **Clean Code**: Code formatting and linting are enforced using `black` and `ruff`.
 -   **API Documentation**: A live, interactive Swagger UI endpoint for API documentation and testing.
+
+## 🏛️ Architecture Overview
+
+This project follows a decoupled, multi-cloud architecture:
+
+```mermaid
+graph TD
+    A[User's Browser] -->|React Frontend on DigitalOcean| B(Backend API on DigitalOcean);
+    B -->|Analyzes Text| C{IBM Watson NLU};
+    B -->|Verifies Human| D{Google reCAPTCHA};
+    B -->|Stores/Retrieves History| E[(Azure PostgreSQL DB)];
+```
 
 ## 🛠️ Tech Stack
 
@@ -59,7 +71,7 @@ Follow these steps to run the backend on your local machine.
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/YOUR_USERNAME/sentiment-analyzer-backend.git
+    git clone https://github.com/carlos-araujo-aus/sentiment-analyzer-backend.git
     cd sentiment-analyzer-backend
     ```
 
