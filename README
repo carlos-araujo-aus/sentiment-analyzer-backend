@@ -1,0 +1,119 @@
+# AI Sentiment Analyzer - Backend API
+
+This repository contains the backend API for the AI Sentiment Analyzer project. It's a robust, production-ready, and secure RESTful service built with Python and Flask. It serves as the intelligent core of the application, handling text analysis, data persistence, and security.
+
+**➡️ Live Frontend Demo (powered by this API): [YOUR_LIVE_DEMO_URL_HERE] ⬅️**
+
+## ✨ Core Features
+
+-   **Powerful AI Analysis**: Integrates with the **IBM Watson Natural Language Understanding** API to provide:
+    -   **Sentiment Analysis**: Classifies text as positive, negative, or neutral.
+    -   **Emotion Detection**: Identifies joy, sadness, anger, fear, and disgust.
+    -   **Keyword Extraction**: Pulls out the most relevant concepts and terms.
+-   **Data Persistence**: Stores every successful analysis in a **PostgreSQL** database, enabling historical data retrieval.
+-   **Anonymous User Sessions**: Implements a private session system using a unique `session_id` (UUID) to ensure each user's analysis history is completely isolated and private, without requiring user accounts or logins.
+-   **Multi-Layered Security**:
+    -   **Google reCAPTCHA v2**: Protects the core analysis endpoint by verifying that each request is made by a human, preventing bot abuse.
+    -   **Hybrid Rate Limiting**: Utilizes `Flask-Limiter` for immediate, in-memory burst protection against high-frequency attacks, combined with a database-driven daily usage limit to control long-term API costs per user session.
+    -   **Strict CORS Policy**: Configured to accept requests only from the deployed frontend's domain in a production environment.
+-   **Professional-Grade Architecture**:
+    -   **Application Factory Pattern**: For a clean, scalable, and testable application structure.
+    -   **Centralized Configuration**: Manages environment-specific settings (development vs. production) cleanly.
+    -   **Automated Database Migrations**: Uses `Flask-Migrate` to manage database schema changes safely and version-controllably.
+-   **Code Quality & Testing**:
+    -   **Automated Tests**: A comprehensive suite of integration and unit tests built with `pytest` and `pytest-mock`.
+    -   **Clean Code**: Code formatting and linting are enforced using `black` and `ruff`.
+-   **API Documentation**: A live, interactive Swagger UI endpoint for API documentation and testing.
+
+## 🛠️ Tech Stack
+
+| Technology         | Purpose                                             |
+| :----------------- | :---------------------------------------------------- |
+| **Python**         | Core server-side language.                            |
+| **Flask**          | Micro-framework for building the REST API.            |
+| **SQLAlchemy**     | ORM for database interaction.                         |
+| **Flask-Migrate**  | For managing database schema migrations.              |
+| **PostgreSQL**     | Relational database system.                           |
+| **Gunicorn**       | Production-grade WSGI server for the Flask app.       |
+| **Docker**         | For containerizing the application for deployment.    |
+| **Flask-Limiter**  | For implementing multi-layered rate limiting.         |
+| **Pytest**         | Framework for automated testing.                      |
+
+## 📖 API Documentation
+
+The API is documented using the OpenAPI (Swagger) standard. When the application is running locally, you can access the interactive Swagger UI to view and test the endpoints at:
+
+[http://127.0.0.1:5001/api/docs](http://127.0.0.1:5001/api/docs)
+
+## 🚀 Getting Started
+
+Follow these steps to run the backend on your local machine.
+
+### Prerequisites
+
+-   Python 3.11+
+-   Docker (for a consistent environment) or a locally installed PostgreSQL server.
+-   Credentials for IBM Watson NLU and Google reCAPTCHA.
+
+### Installation & Setup
+
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/sentiment-analyzer-backend.git
+    cd sentiment-analyzer-backend
+    ```
+
+2.  **Create and activate a virtual environment**:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate
+    ```
+
+3.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  **Configure environment variables**:
+    -   Create a `.env` file in the project root. You can use `.env.example` as a template.
+    -   Fill in the required variables:
+        ```env
+        # A random secret key for Flask sessions
+        SECRET_KEY='your-super-secret-key-here'
+
+        # Connection URI for your PostgreSQL database
+        DATABASE_URL='postgresql://USER:PASSWORD@HOST:PORT/DBNAME'
+
+        # IBM Watson credentials
+        WATSON_API_KEY='your-watson-api-key'
+        WATSON_URL='your-watson-service-url'
+
+        # Google reCAPTCHA secret key
+        RECAPTCHA_SECRET_KEY='your-recaptcha-secret-key'
+        ```
+
+5.  **Apply database migrations**:
+    ```bash
+    # Ensure the FLASK_APP environment variable is set
+    export FLASK_APP=run.py
+    flask db upgrade
+    ```
+
+6.  **Run the server**:
+    ```bash
+    python run.py
+    ```
+    The API will be running at `http://127.0.0.1:5001`.
+
+## 🧪 Testing & Quality Assurance
+
+This project emphasizes code quality and robustness.
+
+-   **Unit & Integration Testing**: The test suite is built with `pytest` and `pytest-mock`. It tests API endpoints in isolation by mocking external dependencies (like the Watson API and the database session), ensuring fast and reliable test runs.
+    ```bash
+    # Install development dependencies first
+    pip install -r requirements-dev.txt
+    # Run the test suite
+    pytest
+    ```
+-   **Linting & Formatting**: `ruff` and `black` are used to enforce a consistent code style and prevent common errors.
